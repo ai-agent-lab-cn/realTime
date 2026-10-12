@@ -59,7 +59,9 @@ watch(
           <time>{{ time(caption.time) }}</time
           ><span v-if="!caption.final" class="partial-label"
             ><span class="tiny-dot" />{{
-              store.session.status === 'Listening' && caption === store.session.captions.at(-1)
+              !caption.error &&
+              store.session.status === 'Listening' &&
+              caption === store.session.captions.at(-1)
                 ? '正在生成'
                 : '未确认'
             }}</span
@@ -75,17 +77,25 @@ watch(
           </button>
         </div>
         <p v-if="store.settings.mode === 'bilingual'" class="english">{{ caption.en }}</p>
-        <p class="chinese">{{ caption.zh }}</p>
+        <p v-if="caption.zh" class="chinese">{{ caption.zh }}</p>
+        <p v-if="caption.error" class="caption-error" role="status">{{ caption.error }}</p>
       </article>
       <div v-if="!store.session.captions.length" class="waiting">
         <AudioLines :size="32" />
         <p>
-          {{ store.session.status === 'Listening' ? '正在等待下一段模拟语音…' : '当前还没有字幕' }}
+          {{
+            store.session.status === 'Listening'
+              ? store.source === 'local'
+                ? '正在等待语音…'
+                : '正在等待下一段模拟语音…'
+              : '当前还没有字幕'
+          }}
         </p>
         <span>本次记录会显示在这里</span>
       </div>
       <div v-else-if="store.session.status === 'Listening'" class="listening-tail">
-        <span class="tiny-dot" /> 正在接收模拟语音
+        <span class="tiny-dot" />
+        {{ store.source === 'local' ? '正在接收麦克风语音' : '正在接收模拟语音' }}
       </div>
     </div>
     <button v-if="away" class="back-latest" @click="bottom">

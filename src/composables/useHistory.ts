@@ -46,6 +46,7 @@ export function useHistory() {
           startedAt: store.startedAt,
           endedAt: new Date().toISOString(),
           captions: store.session.captions.map((c) => ({ ...c })),
+          source: store.source,
         }),
       }
       if (isDesktop) void save()

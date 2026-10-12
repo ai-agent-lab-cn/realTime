@@ -1,0 +1,113 @@
+[
+  {
+    "id": "everyday",
+    "file": "tests/fixtures/local/everyday.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Samantha",
+    "rate": 170,
+    "reference": "Could you please repeat the last sentence a little more slowly?",
+    "semantic_checks": [
+      "请求放慢速度重复上一句"
+    ],
+    "duration": 3.0650625
+  },
+  {
+    "id": "technical",
+    "file": "tests/fixtures/local/technical.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Daniel",
+    "rate": 170,
+    "reference": "We need to improve the RAG retrieval pipeline, not replace the entire application.",
+    "semantic_checks": [
+      "优化 RAG 检索流水线",
+      "不是替换整个应用"
+    ],
+    "duration": 5.1084375
+  },
+  {
+    "id": "numbers",
+    "file": "tests/fixtures/local/numbers.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Samantha",
+    "rate": 170,
+    "reference": "The timeout is fifteen seconds, not fifty. Please keep three backup copies.",
+    "semantic_checks": [
+      "15 秒而非 50 秒",
+      "3 份备份"
+    ],
+    "duration": 4.9226875
+  },
+  {
+    "id": "negation",
+    "file": "tests/fixtures/local/negation.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Karen",
+    "rate": 170,
+    "reference": "Do not delete the original files until the backup has been verified.",
+    "semantic_checks": [
+      "验证备份前不要删除原文件"
+    ],
+    "duration": 3.71525
+  },
+  {
+    "id": "long",
+    "file": "tests/fixtures/local/long.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Samantha",
+    "rate": 190,
+    "reference": "When the connection is interrupted, keep the current subtitles on screen and let the user retry without losing the text that has already been confirmed.",
+    "semantic_checks": [
+      "中断时保留字幕",
+      "重试不能丢失已确认内容"
+    ],
+    "duration": 6.432
+  },
+  {
+    "id": "acronyms",
+    "file": "tests/fixtures/local/acronyms.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Daniel",
+    "rate": 170,
+    "reference": "The agent uses embeddings to search the repository before opening a pull request.",
+    "semantic_checks": [
+      "智能体使用嵌入检索仓库",
+      "随后提出 PR"
+    ],
+    "duration": 4.597625
+  },
+  {
+    "id": "mixed",
+    "file": "tests/fixtures/local/mixed.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Tingting",
+    "rate": 155,
+    "reference": "我们需要优化 RAG pipeline，但是不要修改已经确认的字幕。",
+    "semantic_checks": [
+      "优化 RAG pipeline",
+      "不修改确认字幕"
+    ],
+    "duration": 5.735375
+  },
+  {
+    "id": "mixed_numbers",
+    "file": "tests/fixtures/local/mixed_numbers.wav",
+    "source": "macOS local TTS, synthetic",
+    "voice": "Tingting",
+    "rate": 155,
+    "reference": "这个 API 的 timeout 是十五秒，不是五十秒。",
+    "semantic_checks": [
+      "API 超时 15 秒而非 50 秒"
+    ],
+    "duration": 5.5264375
+  },
+  {
+    "id": "silence",
+    "file": "tests/fixtures/local/silence.wav",
+    "source": "generated zero PCM",
+    "reference": "",
+    "semantic_checks": [
+      "不应出现语音内容"
+    ],
+    "duration": 4
+  }
+]

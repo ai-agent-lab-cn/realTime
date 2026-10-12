@@ -6,6 +6,7 @@ export interface Caption {
   zh: string
   final: boolean
   time: number
+  error?: string
 }
 export interface Event extends Caption {
   epoch: number
@@ -44,6 +45,11 @@ export function accept(s: Session, event: Event): void {
   const { epoch, ...caption } = event
   if (existing) Object.assign(existing, caption)
   else s.captions.push(caption)
+}
+export function discard(s: Session, epoch: number, id: number): void {
+  if (s.status !== 'Listening' || s.epoch !== epoch) return
+  const index = s.captions.findIndex((caption) => caption.id === id && !caption.final)
+  if (index >= 0) s.captions.splice(index, 1)
 }
 export function copyText(s: Session, mode: 'bilingual' | 'chinese', id?: number): string {
   return s.captions

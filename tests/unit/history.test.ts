@@ -23,6 +23,17 @@ it('历史保留双语及未确认标记，并注明模拟数据', () => {
   expect(text).toContain('已确认')
   expect(text).toContain('00:01')
 })
+it('真实麦克风记录标注本地推理来源，不误写模拟数据', () => {
+  const text = historyMarkdown({
+    id,
+    startedAt: request.startedAt,
+    endedAt: '2026-10-08T13:01:00.000Z',
+    source: 'local',
+    captions: [{ id: 1, revision: 1, en: 'Hello', zh: '你好', final: true, time: 1 }],
+  })
+  expect(text).toContain('本地麦克风')
+  expect(text).not.toContain('模拟数据')
+})
 it('创建目录、同轮重试与并发不重复保存，不同轮不覆盖', async () => {
   const root = await mkdtemp(join(tmpdir(), 'shiyi-history-'))
   try {

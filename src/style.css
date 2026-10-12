@@ -164,6 +164,26 @@ main {
   font-size: 11px;
   color: #798779;
 }
+.source-select {
+  max-width: 100px;
+  border: 1px solid #dce8d3;
+  border-radius: 6px;
+  padding: 3px 5px;
+  color: #52704d;
+  background: #f7faf2;
+  font: inherit;
+  font-size: 10px;
+}
+.source-select:disabled {
+  opacity: 0.7;
+}
+.local-error {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: #fff2e8;
+  color: #9b4d2d;
+  font-size: 11px;
+}
 .source-label > svg {
   color: #688370;
 }
@@ -1185,3 +1205,6 @@ main {
     gap: 9px;
   }
 }
+
+.caption-error { color: #8c4b20; font-size: 13px; line-height: 1.65; margin: 8px 0 0; }
+.local-error { font-size: 13px; line-height: 1.65; font-weight: 500; }

@@ -52,3 +52,51 @@ it('重新开始不混入旧字幕，计时从零开始', () => {
   expect(s.elapsed).toBe(0)
   s.stop()
 })
+it('本地模式不播放模拟语料，翻译失败只保留未确认原文', () => {
+  const s = useInterpreter()
+  s.source = 'local'
+  s.start()
+  vi.advanceTimersByTime(3000)
+  expect(s.session.captions).toEqual([])
+  const epoch = s.session.epoch
+  s.acceptLocal(
+    { id: 0, revision: 1, final: true, time: 0 },
+    { en: 'Hello', zh: '', error: 'translation failed' },
+    epoch,
+  )
+  expect(s.session.captions[0]).toMatchObject({ en: 'Hello', final: false })
+  s.pause()
+  s.acceptLocal({ id: 0, revision: 2, final: true, time: 0 }, { en: 'Hello', zh: '你好' }, epoch)
+  expect(s.session.captions[0].zh).toBe('')
+  s.stop()
+})
+
+it('keeps a hard-cut caption unconfirmed and completes its continuation in the same row', () => {
+  const s = useInterpreter()
+  s.source = 'local'
+  s.start()
+  const epoch = s.session.epoch
+  s.acceptLocal(
+    { id: 0, revision: 17, final: true, time: 0 },
+    { en: 'A sentence. In pursuit of', zh: '一句话。', pending: true },
+    epoch,
+  )
+  expect(s.session.captions[0].final).toBe(false)
+  s.acceptLocal(
+    { id: 1, revision: 3, final: true, time: 12 },
+    {
+      en: 'A sentence. In pursuit of returns.',
+      zh: '一句话。追求回报。',
+      caption: { id: 0, revision: 9, time: 0 },
+    },
+    epoch,
+  )
+  expect(s.session.captions).toHaveLength(1)
+  expect(s.session.captions[0]).toMatchObject({
+    id: 0,
+    time: 0,
+    final: true,
+    zh: '一句话。追求回报。',
+  })
+  s.stop()
+})

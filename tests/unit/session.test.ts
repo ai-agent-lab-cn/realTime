@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { createSession, command, accept, copyText, type Event } from '../../src/domain/session'
+import {
+  createSession,
+  command,
+  accept,
+  discard,
+  copyText,
+  type Event,
+} from '../../src/domain/session'
 const event = (epoch: number, patch: Partial<Event> = {}): Event => ({
   epoch,
   id: 1,
@@ -83,5 +90,15 @@ describe('字幕状态规则', () => {
     accept(s, e)
     expect(s.captions).toHaveLength(0)
     expect(s.status).toBe('Listening')
+  })
+  it('本地 VAD 确认为静音时只移除对应临时字幕', () => {
+    const s = createSession()
+    command(s, 'start')
+    accept(s, event(s.epoch, { id: 1 }))
+    accept(s, event(s.epoch, { id: 2, final: true }))
+    discard(s, s.epoch, 1)
+    expect(s.captions.map((caption) => caption.id)).toEqual([2])
+    discard(s, s.epoch - 1, 2)
+    expect(s.captions.map((caption) => caption.id)).toEqual([2])
   })
 })

@@ -6,6 +6,7 @@ test('桌面启动、隔离与剪贴板', async () => {
   })
   try {
     const page = await app.firstWindow()
+    await page.getByLabel('音频来源').selectOption('demo')
     await expect(page.getByRole('button', { name: '开始翻译', exact: true })).toBeVisible()
     expect(await page.evaluate(() => typeof (window as any).require)).toBe('undefined')
     await page.getByRole('button', { name: '开始翻译', exact: true }).click()
@@ -31,6 +32,7 @@ test('桌面结束自动落盘，失败后重试成功，清空不删历史', as
   try {
     await app.evaluate(({ app }, dir) => app.setPath('desktop', dir), desktop)
     const page = await app.firstWindow()
+    await page.getByLabel('音频来源').selectOption('demo')
     await page.clock.install()
     await page.getByRole('button', { name: '开始翻译', exact: true }).click()
     await page.clock.runFor(5000)

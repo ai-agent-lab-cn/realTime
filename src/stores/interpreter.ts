@@ -1,10 +1,14 @@
 import { computed, reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { createSession, command, accept, copyText } from '../domain/session'
+import { createSession, command, accept, discard, copyText } from '../domain/session'
+import type { LocalTranscript } from '../../electron/local-types'
 import { script, terminology } from '../demo/script'
 export const useInterpreter = defineStore('interpreter', () => {
   const session = reactive(createSession())
   const elapsed = ref(0)
+  const source = ref<'demo' | 'local'>(
+    typeof window !== 'undefined' && window.desktop?.local ? 'local' : 'demo',
+  )
   const recordId = ref(''),
     startedAt = ref('')
   const settings = reactive({
@@ -64,6 +68,14 @@ export const useInterpreter = defineStore('interpreter', () => {
       }
     }, 500)
   }
+  function localClock() {
+    cancel()
+    const epoch = session.epoch
+    timer = setInterval(() => {
+      if (session.status !== 'Listening' || epoch !== session.epoch) cancel()
+      else elapsed.value += 0.5
+    }, 500)
+  }
   function start() {
     if (session.status !== 'Ready' && session.status !== 'Stopped') return
     cancel()
@@ -74,7 +86,8 @@ export const useInterpreter = defineStore('interpreter', () => {
     phase = 0
     id = 0
     elapsed.value = 0
-    play()
+    if (source.value === 'demo') play()
+    else localClock()
   }
   function pause() {
     if (session.status !== 'Listening') return
@@ -83,14 +96,16 @@ export const useInterpreter = defineStore('interpreter', () => {
   }
   function resume() {
     if (session.status !== 'Paused') return
-    if (phase > 0) {
+    if (source.value === 'demo' && phase > 0) {
       cursor++
       id++
       phase = 0
     }
     command(session, 'resume')
-    if (cursor >= script.length) stop()
-    else play()
+    if (source.value === 'demo') {
+      if (cursor >= script.length) stop()
+      else play()
+    } else localClock()
   }
   function stop() {
     cancel()
@@ -99,12 +114,42 @@ export const useInterpreter = defineStore('interpreter', () => {
   function clear() {
     cancel()
     command(session, 'clear')
-    if (phase > 0) {
+    if (source.value === 'demo' && phase > 0) {
       cursor++
       id++
       phase = 0
     }
-    if (session.status === 'Listening') play()
+    if (session.status === 'Listening') {
+      if (source.value === 'demo') play()
+      else localClock()
+    }
+  }
+  function acceptLocal(
+    segment: { id: number; revision: number; final: boolean; time: number },
+    result: LocalTranscript,
+    epoch: number,
+  ) {
+    if (source.value !== 'local') return
+    if (result.caption)
+      segment = { ...segment, ...result.caption, revision: result.caption.revision * 2 + 1 }
+    if (!result.en.trim() && !result.zh.trim() && !result.error) {
+      if (segment.final) discard(session, epoch, segment.id)
+      return
+    }
+    const previous = session.captions.find((c) => c.id === segment.id)
+    accept(session, {
+      ...segment,
+      epoch,
+      en: result.error && !result.en ? (previous?.en ?? '') : result.en,
+      zh: result.error && !result.en ? (previous?.zh ?? '') : result.zh,
+      error: result.error,
+      final:
+        segment.final &&
+        !result.pending &&
+        !!result.en.trim() &&
+        !!result.zh.trim() &&
+        !result.error,
+    })
   }
   function text(id?: number) {
     return copyText(session, settings.mode, id)
@@ -114,6 +159,7 @@ export const useInterpreter = defineStore('interpreter', () => {
     startedAt,
     session,
     elapsed,
+    source,
     settings,
     finalCount,
     start,
@@ -121,6 +167,7 @@ export const useInterpreter = defineStore('interpreter', () => {
     resume,
     stop,
     clear,
+    acceptLocal,
     text,
   }
 })

@@ -110,3 +110,67 @@ test('浏览器结束后提供真实 Markdown 下载，不显示桌面保存成�
   expect(text).toContain('Today')
   await expect(page.getByText('已保存到桌面「实译历史记录」', { exact: true })).toHaveCount(0)
 })
+
+test('本地片段失败可继续，连续失败自动暂停且原因在窄窗口可见', async ({ page }) => {
+  // Fault injection exercises the real capture -> queue -> store -> rendered UI path.
+  await page.addInitScript(() => {
+    let worklet: any
+    ;(window as any).__emitAudio = () => {
+      worklet.port.onmessage({ data: new Float32Array(16000 * 2).fill(0.1) })
+      worklet.port.onmessage({ data: new Float32Array(16000) })
+    }
+    const node = () => ({ connect() {}, disconnect() {} })
+    class FakeContext {
+      sampleRate = 16000
+      state = 'running'
+      destination = {}
+      audioWorklet = { addModule: async () => {} }
+      createMediaStreamSource = node
+      createGain() {
+        return { ...node(), gain: { value: 0 } }
+      }
+      addEventListener() {}
+      async resume() {}
+      async close() {
+        this.state = 'closed'
+      }
+    }
+    class FakeWorklet {
+      port = { onmessage: null as any }
+      constructor() {
+        worklet = this
+      }
+      connect() {}
+      disconnect() {}
+    }
+    Object.defineProperty(window, 'AudioContext', { value: FakeContext })
+    Object.defineProperty(window, 'AudioWorkletNode', { value: FakeWorklet })
+    navigator.mediaDevices.getUserMedia = async () =>
+      ({
+        getTracks: () => [{ stop() {}, addEventListener() {} }],
+      }) as any
+    ;(window as any).desktop = {
+      local: {
+        prepare: async () => {},
+        cancel: async () => {},
+        transcribe: async () => ({ en: '', zh: '', error: '识别疑似异常重复，本段未确认' }),
+      },
+    }
+  })
+  await page.reload()
+  await page.getByRole('button', { name: '开始翻译', exact: true }).click()
+  await expect(page.locator('.status-pill')).toContainText('Listening')
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => (window as any).__emitAudio())
+    await expect(page.locator('.caption-error')).toHaveCount(i + 1)
+    if (i < 2) await expect(page.locator('.status-pill')).toContainText('Listening')
+  }
+  await expect(page.locator('.status-pill')).toContainText('Paused')
+  await expect(page.getByRole('alert')).toContainText('已自动暂停')
+  await expect(page.getByRole('alert')).toContainText('识别疑似异常重复')
+  await expect(page.locator('.caption.final')).toHaveCount(0)
+  await page.setViewportSize({ width: 600, height: 760 })
+  await expect(page.getByRole('alert')).toBeInViewport()
+  await expect(page.getByRole('button', { name: '继续翻译', exact: true })).toBeVisible()
+  await page.screenshot({ path: 'outputs/local-runtime-evaluation/recovery-warning.png' })
+})

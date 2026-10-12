@@ -20,8 +20,11 @@ import SubtitleFeed from './components/SubtitleFeed.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import { useHistory } from './composables/useHistory'
+import { useLocalInterpreter } from './composables/useLocalInterpreter'
 const store = useInterpreter()
 const history = useHistory()
+const local = useLocalInterpreter(store)
+const hasLocal = !!window.desktop?.local
 async function openHistory() {
   try {
     await window.desktop?.openHistory()
@@ -83,15 +86,36 @@ async function copy(id?: number) {
 function restart() {
   if (history.status.value === 'saving') return
   if (store.session.captions.length) confirmation.value = 'restart'
+  else start()
+}
+function start() {
+  if (store.source === 'local') void local.begin()
   else store.start()
+}
+function pause() {
+  if (store.source === 'local') local.pause()
+  else store.pause()
+}
+function resume() {
+  if (store.source === 'local') void local.begin(true)
+  else store.resume()
+}
+function stop() {
+  if (store.source === 'local') local.stop()
+  else store.stop()
+}
+function clear() {
+  if (store.source === 'local') local.clear()
+  else store.clear()
 }
 function confirm() {
   if (history.status.value === 'saving') return
-  if (confirmation.value === 'restart') store.start()
-  else store.clear()
+  if (confirmation.value === 'restart') start()
+  else clear()
   confirmation.value = null
 }
 onBeforeUnmount(() => {
+  local.dispose()
   store.stop()
   clearTimeout(toastTimer)
 })
@@ -102,8 +126,16 @@ onBeforeUnmount(() => {
       <section class="interpreter" aria-label="实时翻译器">
         <div class="session-bar">
           <div class="source-label">
-            <Headphones :size="16" /><span>技术英文 · 字幕演示</span><span class="separator" /><span
-              class="language-pair"
+            <Headphones :size="16" /><span>技术英文</span>
+            <select
+              v-model="store.source"
+              class="source-select"
+              aria-label="音频来源"
+              :disabled="!['Ready', 'Stopped'].includes(store.session.status) || local.busy.value"
+            >
+              <option v-if="hasLocal" value="local">本地麦克风</option>
+              <option value="demo">字幕演示</option></select
+            ><span class="separator" /><span class="language-pair"
               >EN <ArrowRight :size="12" /> 中文</span
             >
             <div class="status-pill" :class="store.session.status.toLowerCase()">
@@ -115,27 +147,28 @@ onBeforeUnmount(() => {
             <time class="session-time"><span class="tiny-dot" />{{ clock }}</time>
             <div v-if="store.session.status !== 'Ready'" class="main-actions">
               <template v-if="store.session.status === 'Listening'"
-                ><button class="secondary" @click="store.pause"><Pause :size="17" />暂停</button
-                ><button class="stop-button" @click="store.stop">
+                ><button class="secondary" @click="pause"><Pause :size="17" />暂停</button
+                ><button class="stop-button" @click="stop">
                   <Square :size="13" fill="currentColor" />结束
                 </button></template
               ><template v-else-if="store.session.status === 'Paused'"
-                ><button class="primary" @click="store.resume">
+                ><button v-if="local.busy.value" class="secondary" @click="local.cancelPreparing">
+                  取消准备</button
+                ><button v-else class="primary" @click="resume">
                   <Play :size="16" fill="currentColor" />继续翻译</button
-                ><button class="stop-button" @click="store.stop">
+                ><button class="stop-button" @click="stop">
                   <Square :size="13" fill="currentColor" />结束
                 </button></template
-              ><button
-                v-else-if="store.session.status === 'Stopped'"
-                class="primary"
-                :disabled="history.status.value === 'saving'"
-                @click="restart"
-              >
-                <RotateCcw :size="17" />重新开始
-              </button>
+              ><template v-else-if="store.session.status === 'Stopped'">
+                <button v-if="local.busy.value" class="secondary" @click="local.cancelPreparing">取消准备</button>
+                <button v-else class="primary" :disabled="history.status.value === 'saving'" @click="restart">
+                  <RotateCcw :size="17" />重新开始
+                </button>
+              </template>
             </div>
           </div>
         </div>
+        <div v-if="local.error.value" class="local-error" role="alert">{{ local.error.value }}</div>
         <div v-if="store.session.status === 'Ready'" class="welcome">
           <div class="sound-orbit">
             <div class="orbit-ring one" />
@@ -152,10 +185,21 @@ onBeforeUnmount(() => {
           <span class="welcome-overline">少一点语言距离，多一点专注</span>
           <h2>让理解，跟上每一句。</h2>
           <p>英文原文与中文翻译同步呈现，<br />让你专注正在听的内容。</p>
-          <button class="primary welcome-start" @click="store.start">
+          <button
+            v-if="local.busy.value"
+            class="secondary welcome-start"
+            @click="local.cancelPreparing"
+          >
+            正在准备本地模型… 取消
+          </button>
+          <button v-else class="primary welcome-start" @click="start">
             <Play :size="17" fill="currentColor" />开始翻译<ArrowUpRight :size="17" />
           </button>
-          <span class="welcome-note">点击播放模拟字幕，无需麦克风权限</span>
+          <span class="welcome-note">{{
+            store.source === 'local'
+              ? '点击开始后会请求麦克风权限；音频仅在本机处理'
+              : '点击播放模拟字幕，无需麦克风权限'
+          }}</span>
           <div class="feature-strip">
             <span><span class="feature-number">01</span>双语对照</span
             ><span><span class="feature-number">02</span>渐进字幕</span
@@ -164,7 +208,9 @@ onBeforeUnmount(() => {
         </div>
         <template v-else
           ><div v-if="store.session.status === 'Paused'" class="session-notice">
-            <Pause :size="14" />已暂停，当前字幕已保留<span>继续后播放下一段示例</span>
+            <Pause :size="14" />已暂停，当前字幕已保留<span>{{
+              store.source === 'local' ? '继续后重新启用麦克风' : '继续后播放下一段示例'
+            }}</span>
           </div>
           <div v-else-if="store.session.status === 'Stopped'" class="session-notice ended">
             <Check :size="15" /><strong>翻译已结束</strong

@@ -6,3 +6,9 @@ playwright-report/
 test-results/
 .DS_Store
 .env*
+models/
+tests/fixtures/local/*.wav
+__pycache__/
+
+# Local evaluation artifacts may contain course transcripts and machine paths.
+outputs/
