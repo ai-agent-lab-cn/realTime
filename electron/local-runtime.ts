@@ -111,7 +111,8 @@ export class LocalRuntime {
         return { en: '', zh: '', error: issue, caption }
       }
       const en = questionPunctuation(carry ? joinContinuation(carry.en, current) : current)
-      const hold = !carry && request.final && duration >= 11.98 && hasOpenTail(en)
+      // A pause ends an audio window, but does not complete an unfinished clause.
+      const hold = !carry && request.final && hasOpenTail(en)
       const prefix = completePrefix(en)
       const pending =
         hold ||

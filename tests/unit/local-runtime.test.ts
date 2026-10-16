@@ -319,3 +319,37 @@ it('translates completed sentences while leaving an unfinished trailing clause p
   expect(final.zh).toBe('译：Costs are high. Companies invest heavily. Returns increase.')
   expect(final.pending).toBeUndefined()
 })
+
+it('keeps a pause-ended residual clause pending and joins its immediate continuation', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.translate.mockImplementation(async (text: string) => '译：' + text)
+  await r.prepare(token)
+  m.recognize.mockResolvedValueOnce('Research is costly. Companies invest in pursuit of')
+  const held = await r.transcribe({ ...input(), revision: 3, pcm: new Float32Array(64000).buffer })
+  expect(held).toMatchObject({ pending: true, zh: '译：Research is costly.' })
+  expect(held.error).toBeUndefined()
+  m.recognize.mockResolvedValueOnce('higher returns.')
+  const next = await r.transcribe({ ...input(), id: 1, time: 4 })
+  expect(next).toMatchObject({
+    en: 'Research is costly. Companies invest in pursuit of higher returns.',
+    zh: '译：Research is costly. Companies invest in pursuit of higher returns.',
+    caption: { id: 0, revision: 4, time: 0 },
+  })
+  expect(next.pending).toBeUndefined()
+})
+it('does not send an empty-prefix residual to translation or carry it across a long silence', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.translate.mockImplementation(async (text: string) => '译：' + text)
+  await r.prepare(token)
+  m.recognize.mockResolvedValueOnce('We invest in')
+  const held = await r.transcribe({ ...input(), pcm: new Float32Array(32000).buffer })
+  expect(held).toMatchObject({ en: 'We invest in', zh: '', pending: true })
+  expect(held.error).toBeUndefined()
+  expect(m.translate).not.toHaveBeenCalled()
+  m.recognize.mockResolvedValueOnce('A different topic.')
+  const separate = await r.transcribe({ ...input(), id: 1, time: 10 })
+  expect(separate).toMatchObject({ en: 'A different topic.', zh: '译：A different topic.' })
+  expect(separate.caption).toBeUndefined()
+})
