@@ -3,8 +3,10 @@ import { defineStore } from 'pinia'
 import { createSession, command, accept, discard, copyText } from '../domain/session'
 import type { LocalTranscript } from '../../electron/local-types'
 import { script, terminology } from '../demo/script'
+import { LocalCaptionUpdates, type LocalSegment } from '../domain/localCaptions'
 export const useInterpreter = defineStore('interpreter', () => {
   const session = reactive(createSession())
+  const localCaptions = new LocalCaptionUpdates(session)
   const elapsed = ref(0)
   const source = ref<'demo' | 'local'>(
     typeof window !== 'undefined' && window.desktop?.local ? 'local' : 'demo',
@@ -128,15 +130,35 @@ export const useInterpreter = defineStore('interpreter', () => {
     segment: { id: number; revision: number; final: boolean; time: number },
     result: LocalTranscript,
     epoch: number,
+    progress = false,
   ) {
     if (source.value !== 'local') return
     if (result.caption)
-      segment = { ...segment, ...result.caption, revision: result.caption.revision * 2 + 1 }
+      segment = {
+        ...segment,
+        ...result.caption,
+        revision: result.caption.revision * 2 + (progress ? 0 : 1),
+      }
     if (!result.en.trim() && !result.zh.trim() && !result.error) {
       if (segment.final) discard(session, epoch, segment.id)
       return
     }
     const previous = session.captions.find((c) => c.id === segment.id)
+    if (progress && previous?.revision === segment.revision) {
+      // Multiple chunks of one request share a revision; only extend its own
+      // provisional translation. Terminology casing can change inside a prefix.
+      // The active-request gate filters late events; normal accept rejects stale revisions.
+      if (
+        session.status === 'Listening' &&
+        session.epoch === epoch &&
+        !previous.final &&
+        previous.en === result.en &&
+        result.zh.length >= previous.zh.length
+      ) {
+        previous.zh = result.zh
+      }
+      return
+    }
     accept(session, {
       ...segment,
       epoch,
@@ -150,6 +172,22 @@ export const useInterpreter = defineStore('interpreter', () => {
         !!result.zh.trim() &&
         !result.error,
     })
+  }
+  function recognizeLocal(
+    segment: LocalSegment,
+    result: LocalTranscript,
+    epoch: number,
+    checked = false,
+  ) {
+    if (source.value === 'local') localCaptions.recognize(segment, result, epoch, checked)
+  }
+  function translateLocal(
+    segment: LocalSegment,
+    result: LocalTranscript,
+    epoch: number,
+    complete: boolean,
+  ) {
+    if (source.value === 'local') localCaptions.translate(segment, result, epoch, complete)
   }
   function text(id?: number) {
     return copyText(session, settings.mode, id)
@@ -168,6 +206,8 @@ export const useInterpreter = defineStore('interpreter', () => {
     stop,
     clear,
     acceptLocal,
+    recognizeLocal,
+    translateLocal,
     text,
   }
 })

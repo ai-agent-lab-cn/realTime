@@ -3,6 +3,9 @@ export interface AudioSegment {
   revision: number
   final: boolean
   time: number
+  speechStart: number
+  speechEnd: number
+  end: number
   pcm: Float32Array
 }
 
@@ -27,6 +30,8 @@ export class SpeechSegmenter {
   private framesSincePartial = 0
   private totalFrames = 0
   private startFrame = 0
+  private speechStartFrame = 0
+  private speechEndFrame = 0
 
   push(samples: Float32Array): AudioSegment[] {
     const joined = new Float32Array(this.pending.length + samples.length)
@@ -53,6 +58,7 @@ export class SpeechSegmenter {
     if (!this.active.length && speaking) {
       this.active = this.preRoll.slice()
       this.startFrame = Math.max(0, now - this.active.length)
+      this.speechStartFrame = now
       this.revision = 0
       this.voiceFrames = 0
       this.quietFrames = 0
@@ -61,6 +67,7 @@ export class SpeechSegmenter {
     if (this.active.length || speaking) {
       this.active.push(frame)
       if (speaking) {
+        this.speechEndFrame = now + 1
         this.voiceFrames++
         this.quietFrames = 0
       } else this.quietFrames++
@@ -104,6 +111,9 @@ export class SpeechSegmenter {
       revision: ++this.revision,
       final,
       time: (this.startFrame * FRAME) / RATE,
+      speechStart: (this.speechStartFrame * FRAME) / RATE,
+      speechEnd: (this.speechEndFrame * FRAME) / RATE,
+      end: (this.totalFrames * FRAME) / RATE,
       pcm,
     }
     if (final) this.id++

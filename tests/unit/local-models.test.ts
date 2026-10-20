@@ -54,3 +54,88 @@ it('does not inject software vocabulary into course recognition when terminology
     request.mockRestore()
   }
 })
+
+it('delivers Chinese while the local HTTP translation is still generating', async () => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c
+    },
+  })
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(stream))
+  const progress: string[] = []
+  const result = new NativeModels('/unused')
+    .translate('Costs are high.', false, new AbortController().signal, (text) =>
+      progress.push(text),
+    )
+    .catch((e) => e)
+  const send = (s: string) => controller.enqueue(new TextEncoder().encode(s))
+  try {
+    const data =
+      'data: ' +
+      JSON.stringify({ choices: [{ delta: { content: '成本很高' }, finish_reason: null }] }) +
+      '\r\n\r\n'
+    const bytes = new TextEncoder().encode(data)
+    // Split inside the multi-byte Chinese payload, as real transport chunks can do.
+    const cut = bytes.indexOf(0xe6) + 1
+    controller.enqueue(bytes.slice(0, cut))
+    controller.enqueue(bytes.slice(cut))
+    await vi.waitFor(() => expect(progress).toEqual(['成本很高']))
+    expect(JSON.parse(fetch.mock.calls[0][1]!.body as string).stream).toBe(true)
+    send(
+      'data: ' +
+        JSON.stringify({ choices: [{ delta: { content: '。' }, finish_reason: 'stop' }] }) +
+        '\n\ndata: [DONE]\n\n',
+    )
+    controller.close()
+    expect(await result).toBe('成本很高。')
+  } finally {
+    fetch.mockRestore()
+    try {
+      controller.close()
+    } catch {}
+  }
+})
+
+it.each(['length', null])('rejects a truncated translation stream (%s)', async (reason) => {
+  const body =
+    'data: ' +
+    JSON.stringify({ choices: [{ delta: { content: '没有完成' }, finish_reason: reason }] }) +
+    '\n\ndata: [DONE]\n\n'
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body))
+  try {
+    await expect(
+      new NativeModels('/unused').translate('Incomplete', false, new AbortController().signal),
+    ).rejects.toThrow()
+  } finally {
+    fetch.mockRestore()
+  }
+})
+
+it('cancels a stalled translation stream without waiting for the response to finish', async () => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c
+    },
+  })
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(stream))
+  const signal = new AbortController(),
+    progress: string[] = []
+  const job = new NativeModels('/unused')
+    .translate('Test', false, signal.signal, (text) => progress.push(text))
+    .catch((e) => e)
+  try {
+    controller.enqueue(
+      new TextEncoder().encode(
+        'data: {"choices":[{"delta":{"content":"初步"},"finish_reason":null}]}\n\n',
+      ),
+    )
+    await vi.waitFor(() => expect(progress).toEqual(['初步']))
+    signal.abort()
+    expect(await job).toBeInstanceOf(Error)
+    expect(progress).toEqual(['初步'])
+  } finally {
+    fetch.mockRestore()
+  }
+})

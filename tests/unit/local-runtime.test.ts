@@ -43,8 +43,9 @@ it('cancellation prevents late recognition from starting translation or replacin
   const job = r.transcribe(input())
   await Promise.resolve()
   r.cancel(token)
-  await r.prepare(other)
+  const prepared = r.prepare(other)
   resolve('stale')
+  await prepared
   await expect(job).rejects.toThrow()
   expect(m.translate).not.toHaveBeenCalled()
   r.cancel(token)
@@ -202,7 +203,10 @@ it('holds an unfinished hard cut, translates its complete prefix and joins only 
     caption: { id: 0, revision: 9, time: 0 },
   })
   expect(next.pending).not.toBe(true)
-  expect(early).not.toHaveBeenCalled()
+  expect(early).toHaveBeenCalledWith(
+    'Research is costly. Companies invest in pursuit of higher returns.',
+    { id: 0, revision: 9, time: 0 },
+  )
 })
 it('does not merge complete sentences, a gap, changed terminology or another session', async () => {
   for (const patch of [{ time: 30 }, { terms: false }, { token: other }]) {
@@ -312,11 +316,11 @@ it('translates completed sentences while leaving an unfinished trailing clause p
   })
   m.recognize.mockResolvedValueOnce('Costs are high. Companies invest heavily. Returns increase')
   expect((await r.transcribe({ ...input(), final: false, revision: 2 })).zh).toBe(
-    '译：Costs are high. Companies invest heavily.',
+    '译：Costs are high.\n译：Companies invest heavily.',
   )
   m.recognize.mockResolvedValueOnce('Costs are high. Companies invest heavily. Returns increase.')
   const final = await r.transcribe({ ...input(), revision: 3 })
-  expect(final.zh).toBe('译：Costs are high. Companies invest heavily. Returns increase.')
+  expect(final.zh).toBe('译：Costs are high.\n译：Companies invest heavily.\n译：Returns increase.')
   expect(final.pending).toBeUndefined()
 })
 
@@ -333,7 +337,7 @@ it('keeps a pause-ended residual clause pending and joins its immediate continua
   const next = await r.transcribe({ ...input(), id: 1, time: 4 })
   expect(next).toMatchObject({
     en: 'Research is costly. Companies invest in pursuit of higher returns.',
-    zh: '译：Research is costly. Companies invest in pursuit of higher returns.',
+    zh: '译：Research is costly.\n译：Companies invest in pursuit of higher returns.',
     caption: { id: 0, revision: 4, time: 0 },
   })
   expect(next.pending).toBeUndefined()
@@ -352,4 +356,461 @@ it('does not send an empty-prefix residual to translation or carry it across a l
   const separate = await r.transcribe({ ...input(), id: 1, time: 10 })
   expect(separate).toMatchObject({ en: 'A different topic.', zh: '译：A different topic.' })
   expect(separate.caption).toBeUndefined()
+})
+
+it.each([
+  [12, 12],
+  [10.48, 10.2],
+])(
+  'joins a noun-ended unfinished sentence across an audio window ending at %s seconds',
+  async (duration, nextStart) => {
+    const m = models(),
+      r = new LocalRuntime(m)
+    m.translate.mockImplementation(async (text: string) => '译：' + text)
+    await r.prepare(token)
+    m.recognize.mockResolvedValueOnce('It turns out that not all the research projects')
+    const first = await r.transcribe({
+      ...input(),
+      revision: 4,
+      pcm: new Float32Array(Math.round(16000 * duration)).buffer,
+    })
+    expect(first).toMatchObject({
+      pending: true,
+      zh: '译：It turns out that not all the research projects',
+    })
+    m.recognize.mockResolvedValueOnce('can be a successful product.')
+    const next = await r.transcribe({ ...input(), id: 1, time: nextStart })
+    expect(next).toMatchObject({
+      en: 'It turns out that not all the research projects can be a successful product.',
+      caption: { id: 0, revision: 5 },
+    })
+    expect(next.pending).toBeUndefined()
+  },
+)
+
+it('does not mistake an ellipsis for a completed sentence at a window boundary', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  m.recognize.mockResolvedValueOnce('The intensity is the...')
+  expect((await r.transcribe(input())).pending).toBe(true)
+})
+
+it('publishes provisional Chinese before completion and blocks progress after cancellation', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  let publish!: (text: string) => void, finish!: (text: string) => void
+  m.translate = vi.fn(
+    (_text: string, _terms: boolean, _signal: AbortSignal, progress?: (text: string) => void) => {
+      publish = progress ?? (() => {})
+      return new Promise<string>((resolve) => {
+        finish = resolve
+      })
+    },
+  ) as any
+  await r.prepare(token)
+  const progress: any[] = []
+  const result = r.transcribe(input(), undefined, (value) => progress.push(value)).catch((e) => e)
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  publish('你好')
+  expect(progress).toEqual([expect.objectContaining({ en: 'Hello', zh: '你好', pending: true })])
+  r.cancel(token)
+  publish('你好，迟到')
+  finish('你好，迟到')
+  expect(await result).toBeInstanceOf(Error)
+  expect(progress).toHaveLength(1)
+})
+
+it('releases ASR acknowledgments while earlier translation remains pending', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  let finish!: (text: string) => void
+  m.translate.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  await r.prepare(token)
+  const complete = vi.fn()
+  expect(await r.recognize(input(), undefined, undefined, complete)).toMatchObject({
+    en: 'Hello',
+    zh: '',
+    pending: true,
+  })
+  m.recognize.mockResolvedValueOnce('The next sentence.')
+  expect(await r.recognize({ ...input(), id: 1, time: 1 })).toMatchObject({
+    en: 'The next sentence.',
+    pending: true,
+  })
+  expect(complete).not.toHaveBeenCalled()
+  finish('你好')
+  await vi.waitFor(() =>
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ en: 'Hello', zh: '你好' })),
+  )
+})
+
+it('rejects anomalous English before any provisional notification or translation', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  const text = 'We have a lot of resources and '.repeat(6).trim()
+  m.recognize.mockResolvedValueOnce(text)
+  const early = vi.fn(),
+    complete = vi.fn()
+  const ack = await r.recognize(
+    { ...input(), pcm: new Float32Array(160000).buffer },
+    early,
+    undefined,
+    complete,
+  )
+  expect(early).not.toHaveBeenCalled()
+  expect(ack).toMatchObject({ en: '', zh: '', error: expect.stringContaining('重复') })
+  expect(m.translate).not.toHaveBeenCalled()
+  expect(complete).not.toHaveBeenCalled()
+})
+
+it('establishes continuation during ASR even while its first translation is pending', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  let finish!: (text: string) => void
+  m.recognize.mockResolvedValueOnce('Costs are high. Companies invest in')
+  m.translate.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  await r.recognize({ ...input(), revision: 4, pcm: new Float32Array(64000).buffer })
+  m.recognize.mockResolvedValueOnce('new products.')
+  const early = vi.fn(),
+    complete = vi.fn()
+  const ack = await r.recognize({ ...input(), id: 1, time: 4 }, early, undefined, complete)
+  expect(early).toHaveBeenCalledWith('Costs are high. Companies invest in new products.', {
+    id: 0,
+    revision: 5,
+    time: 0,
+  })
+  expect(ack.caption).toEqual({ id: 0, revision: 5, time: 0 })
+  finish('成本很高。')
+  await vi.waitFor(() => expect(complete).toHaveBeenCalledOnce())
+  m.recognize.mockResolvedValueOnce('A separate sentence.')
+  expect((await r.recognize({ ...input(), id: 2, time: 5 })).caption).toBeUndefined()
+})
+
+it('cancels background translation callbacks by exact request and keeps the session usable', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  let finish!: (text: string) => void, publish!: (text: string) => void
+  m.translate = vi.fn((_en, _terms, _signal, progress) => {
+    publish = progress!
+    return new Promise((resolve) => {
+      finish = resolve
+    })
+  }) as any
+  await r.prepare(token)
+  const complete = vi.fn(),
+    progress = vi.fn()
+  await r.recognize({ ...input(), final: false }, undefined, progress, complete)
+  r.cancelRequest({ token, id: 0, revision: 2 })
+  publish('你好')
+  expect(progress).toHaveBeenCalledOnce()
+  r.cancelRequest({ token, id: 0, revision: 1 })
+  publish('迟到')
+  finish('迟到')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(progress).toHaveBeenCalledOnce()
+  expect(complete).not.toHaveBeenCalled()
+  expect(r.active).toBe(true)
+})
+
+it('distinguishes scheduled translation acknowledgments from terminal no-MT replies', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  expect(await r.recognize(input())).toMatchObject({ translationQueued: true })
+  m.recognize.mockResolvedValueOnce('[BLANK_AUDIO]')
+  expect(await r.recognize({ ...input(), id: 1, time: 1 })).toEqual({
+    en: '',
+    zh: '',
+    translationQueued: false,
+  })
+  m.recognize.mockResolvedValueOnce('We invest in')
+  expect(await r.recognize({ ...input(), id: 2, time: 2 })).toMatchObject({
+    pending: true,
+    translationQueued: false,
+  })
+})
+
+it('does not emit completion twice when the completion consumer throws', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  const complete = vi.fn(() => {
+    throw new Error('consumer closed')
+  })
+  await r.recognize(input(), undefined, undefined, complete)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(complete).toHaveBeenCalledOnce()
+})
+
+it('waits for canceled native ASR before marking a resumed session ready', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  await r.prepare(token)
+  let finish!: (text: string) => void
+  m.recognize.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const old = r.recognize({ ...input(), final: false }).catch((e) => e)
+  r.cancel(token)
+  const resumed = r.prepare(other)
+  await Promise.resolve()
+  expect(r.active).toBe(false)
+  finish('stale')
+  expect(await old).toBeInstanceOf(Error)
+  await resumed
+  expect(r.active).toBe(true)
+  expect(await r.recognize({ ...input(), token: other })).toMatchObject({
+    en: 'Hello',
+    translationQueued: true,
+  })
+})
+
+it('reports MT overload through completion without dropping accepted Final requests', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  let finish!: (text: string) => void
+  m.translate.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  await r.prepare(token)
+  const results: any[] = [],
+    overflow = vi.fn()
+  for (let id = 0; id < 4; id++) {
+    m.recognize.mockResolvedValueOnce(`Sentence ${id}.`)
+    expect(
+      await r.recognize({ ...input(), id, time: id }, undefined, undefined, (result) =>
+        results.push(result),
+      ),
+    ).toMatchObject({ translationQueued: true })
+  }
+  m.recognize.mockResolvedValueOnce('Overflow sentence.')
+  await r.recognize({ ...input(), id: 4, time: 4 }, undefined, undefined, overflow)
+  await vi.waitFor(() =>
+    expect(overflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        en: 'Overflow sentence.',
+        zh: '',
+        error: expect.stringContaining('积压'),
+      }),
+    ),
+  )
+  expect(results).toHaveLength(0)
+  finish('第一句。')
+  await vi.waitFor(() => expect(results).toHaveLength(4))
+  expect(results.map((result) => result.en)).toEqual([
+    'Sentence 0.',
+    'Sentence 1.',
+    'Sentence 2.',
+    'Sentence 3.',
+  ])
+})
+
+it('blocks old-session MT progress and completion after cancel and prepare', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  let finish!: (text: string) => void, publish!: (text: string) => void
+  m.translate = vi.fn((_en, _terms, _signal, progress) => {
+    publish = progress!
+    return new Promise((resolve) => {
+      finish = resolve
+    })
+  }) as any
+  await r.prepare(token)
+  const progress = vi.fn(),
+    complete = vi.fn()
+  await r.recognize(input(), undefined, progress, complete)
+  r.cancel(token)
+  await r.prepare(other)
+  publish('旧会话')
+  finish('旧会话')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(progress).not.toHaveBeenCalled()
+  expect(complete).not.toHaveBeenCalled()
+  m.translate.mockResolvedValueOnce('新会话')
+  expect(await r.transcribe({ ...input(), token: other })).toMatchObject({ zh: '新会话' })
+})
+
+it('reuses completed sentence translations when ASR adds a new sentence', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.translate.mockImplementation(async (text) => '译：' + text)
+  await r.prepare(token)
+  m.recognize.mockResolvedValueOnce('Costs are high.')
+  await r.transcribe({ ...input(), final: false })
+  m.recognize.mockResolvedValueOnce('Costs are high. Returns rise.')
+  expect(await r.transcribe({ ...input(), revision: 2 })).toMatchObject({
+    zh: '译：Costs are high.\n译：Returns rise.',
+  })
+  expect(m.translate.mock.calls.map((call) => call[0])).toEqual([
+    'Costs are high.',
+    'Returns rise.',
+  ])
+})
+
+it('lets an unchanged Final reuse an in-flight Partial translation without restarting the model', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.recognize.mockResolvedValue('Costs are high.')
+  let release!: (zh: string) => void
+  let nativeSignal!: AbortSignal
+  m.translate.mockImplementationOnce((_en: string, _terms: boolean, signal: AbortSignal) => {
+    nativeSignal = signal
+    return new Promise<string>((resolve) => {
+      release = resolve
+    })
+  })
+  await r.prepare(token)
+  const partialResults: any[] = [],
+    finalResults: any[] = []
+  await r.recognize({ ...input(), final: false }, undefined, undefined, (x) =>
+    partialResults.push(x),
+  )
+  await r.recognize({ ...input(), revision: 2 }, undefined, undefined, (x) => finalResults.push(x))
+  expect(nativeSignal.aborted).toBe(false)
+  release('成本很高。')
+  await vi.waitFor(() => expect(finalResults).toHaveLength(1))
+  expect(partialResults).toHaveLength(1)
+  expect(finalResults[0]).toMatchObject({ en: 'Costs are high.', zh: '成本很高。' })
+  expect(m.translate).toHaveBeenCalledTimes(1)
+})
+
+it.each(['words', 'terms'] as const)(
+  'still preempts a Partial when Final changes %s',
+  async (change) => {
+    const m = models(),
+      r = new LocalRuntime(m)
+    m.recognize
+      .mockResolvedValueOnce('Costs are high.')
+      .mockResolvedValueOnce(change === 'words' ? 'Costs are low.' : 'Costs are high.')
+    let release!: (zh: string) => void
+    let oldSignal!: AbortSignal
+    m.translate.mockImplementationOnce((_en: string, _terms: boolean, signal: AbortSignal) => {
+      oldSignal = signal
+      return new Promise<string>((resolve) => {
+        release = resolve
+      })
+    })
+    await r.prepare(token)
+    await r.recognize({ ...input(), final: false })
+    const results: any[] = []
+    await r.recognize(
+      { ...input(), revision: 2, terms: change === 'terms' ? false : true },
+      undefined,
+      undefined,
+      (x) => results.push(x),
+    )
+    expect(oldSignal.aborted).toBe(true)
+    release('旧结果')
+    await vi.waitFor(() => expect(results).toHaveLength(1))
+    expect(results[0].zh).toBe('你好')
+    expect(m.translate).toHaveBeenCalledTimes(2)
+  },
+)
+
+it('retries the Final if its same-source in-flight Partial translation fails', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.recognize.mockResolvedValue('Costs are high.')
+  let fail!: (e: Error) => void
+  m.translate.mockImplementationOnce(
+    () =>
+      new Promise<string>((_resolve, reject) => {
+        fail = reject
+      }),
+  )
+  await r.prepare(token)
+  const partial: any[] = [],
+    final: any[] = []
+  await r.recognize({ ...input(), final: false }, undefined, undefined, (x) => partial.push(x))
+  await r.recognize({ ...input(), revision: 2 }, undefined, undefined, (x) => final.push(x))
+  fail(new Error('transient model failure'))
+  await vi.waitFor(() => expect(final).toHaveLength(1))
+  expect(partial[0].error).toContain('失败')
+  expect(final[0]).toMatchObject({ en: 'Costs are high.', zh: '你好' })
+  expect(final[0].error).toBeUndefined()
+  expect(m.translate).toHaveBeenCalledTimes(2)
+})
+
+it('uses the same safe quoted sentence prefix in the runtime without translating the open tail', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.recognize.mockResolvedValue('He said "Ready." Now the')
+  await r.prepare(token)
+  expect(await r.transcribe(input())).toMatchObject({
+    en: 'He said "Ready." Now the',
+    pending: true,
+  })
+  expect(m.translate).toHaveBeenCalledWith(
+    'He said "Ready."',
+    true,
+    expect.any(AbortSignal),
+    expect.any(Function),
+  )
+})
+
+it('notifies completed sentence units while a following sentence is still pending', async () => {
+  const m = models(),
+    r = new LocalRuntime(m)
+  m.recognize.mockResolvedValue('Costs are high. Returns rise. Growth continues.')
+  let release!: (zh: string) => void
+  m.translate.mockImplementation(async (text: string) =>
+    text === 'Growth continues.'
+      ? new Promise<string>((resolve) => {
+          release = resolve
+        })
+      : '译:' + text,
+  )
+  await r.prepare(token)
+  const progress: any[] = []
+  await r.recognize(input(), undefined, (x) => progress.push(x))
+  await vi.waitFor(() => expect(progress.at(-1)?.units).toHaveLength(2))
+  expect(progress.at(-1).units[1]).toMatchObject({
+    source: 'Returns rise.',
+    zh: '译:Returns rise.',
+  })
+  release('增长继续。')
+})
+
+it('traces stages without depending on the diagnostics observer succeeding', async () => {
+  const m = models(),
+    events: string[] = []
+  m.recognize.mockResolvedValue('Costs are high.')
+  const r = new LocalRuntime(m, (_key, stage) => {
+    events.push(stage)
+    if (stage === 'asrStart') throw new Error('diagnostics unavailable')
+  })
+  await r.prepare(token)
+  expect((await r.transcribe(input())).zh).toBe('你好')
+  expect(events).toEqual(
+    expect.arrayContaining([
+      'asrStart',
+      'asrEnd',
+      'qualityEnd',
+      'englishNotified',
+      'mtQueued',
+      'mtStart',
+      'mtFirst',
+      'mtUnit',
+      'complete',
+    ]),
+  )
 })

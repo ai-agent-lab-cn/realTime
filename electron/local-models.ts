@@ -1,3 +1,4 @@
+import { readTranslationStream } from './translation-stream.js'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { access } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -187,7 +188,13 @@ export class NativeModels implements Models {
       throw new Error('本地识别结果无效')
     return data.text
   }
-  async translate(text: string, terms: boolean, signal: AbortSignal): Promise<string> {
+  async translate(
+    text: string,
+    terms: boolean,
+    signal: AbortSignal,
+    onProgress?: (text: string) => void,
+  ): Promise<string> {
+    const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(30000)])
     const response = await fetch(`${this.mt}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.key}` },
@@ -199,20 +206,15 @@ export class NativeModels implements Models {
         ],
         temperature: 0,
         max_tokens: 256,
-        stream: false,
+        stream: true,
         seed: 42,
       }),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
+      signal: requestSignal,
     })
     if (!response.ok) throw new Error('本地翻译服务不可用')
-    const data = (await response.json()) as {
-      choices?: { finish_reason?: string; message?: { content?: unknown } }[]
-    }
-    const choice = data.choices?.[0]
-    if (choice?.finish_reason !== 'stop' || typeof choice.message?.content !== 'string')
-      throw new Error('翻译未完整完成')
-    return choice.message.content.trim()
+    return readTranslationStream(response, requestSignal, onProgress)
   }
+
   close() {
     this.generation++
     this.ready = null

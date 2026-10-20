@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "id": "sherpa-onnx-streaming-zipformer-en-2023-06-26",
+  "status": "ready_for_local_asr_experiment",
+  "precision": "fp32",
+  "language": "en",
+  "checked_at": "2026-10-19",
+  "official_documentation": "https://k2-fsa.github.io/sherpa/onnx/pretrained_models/online-transducer/zipformer-transducer-models.html#sherpa-onnx-streaming-zipformer-en-2023-06-26-english",
+  "weights": {
+    "repository": "csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26",
+    "revision": "672fbf1b30579d6585301139bb363f42a0ad4a24",
+    "source_repository": "Zengwei/icefall-asr-librispeech-streaming-zipformer-2023-05-17",
+    "source_revision": "37cb5606808f3d5e55a3fc73554bdf757d82465a",
+    "files": [
+      {
+        "name": "decoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/decoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/decoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "bytes": 2092621,
+        "sha256": "7bf787f90b194b307e5a4ad6a34fadb4e748304c35f78a8d66358a05b13ee6ef",
+        "hash_source": "Hugging Face LFS SHA-256"
+      },
+      {
+        "name": "encoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/encoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/encoder-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "bytes": 262127043,
+        "sha256": "a423883ce5754507fd941755ab0b5bc426a84ac670cbe21cf060e9e2c66dc660",
+        "hash_source": "Hugging Face LFS SHA-256"
+      },
+      {
+        "name": "joiner-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/joiner-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/joiner-epoch-99-avg-1-chunk-16-left-128.onnx",
+        "bytes": 1026405,
+        "sha256": "210591f72b3c56b8364f85f345dca240bc2b4c00632848f4aa923630d5639d3b",
+        "hash_source": "Hugging Face LFS SHA-256"
+      },
+      {
+        "name": "tokens.txt",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/tokens.txt",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/resolve/672fbf1b30579d6585301139bb363f42a0ad4a24/tokens.txt",
+        "bytes": 5048,
+        "sha256": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb",
+        "hash_source": "downloaded bytes; fixed HF Git blob b4d1bf82e68de1354f2a3f5fd51094d61d65c77c"
+      }
+    ]
+  },
+  "runtime": {
+    "package": "sherpa-onnx",
+    "version": "1.13.8",
+    "core_version": "1.13.8",
+    "numpy_version": "2.0.2",
+    "python_path": "work/streaming-asr/venv/bin/python",
+    "python_version": "3.9.6",
+    "platform": "macOS arm64",
+    "wheel": {
+      "filename": "sherpa_onnx-1.13.8-cp39-cp39-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/e7/25/2062254d6dd424f8cdc1b936fbfcc19ee653896d5e329edf1aab79ed39eb/sherpa_onnx-1.13.8-cp39-cp39-macosx_11_0_arm64.whl",
+      "size": 2140519,
+      "digests": {
+        "blake2b_256": "e7252062254d6dd424f8cdc1b936fbfcc19ee653896d5e329edf1aab79ed39eb",
+        "md5": "dc48ee9fb9845b43a720ba4ee4aaecf5",
+        "sha256": "da288a084ffccea9468c4ba916ed367ebdf7e28e7a4f3c59b684e37fc429e466"
+      }
+    },
+    "dependency_freeze_path": "work/streaming-asr/requirements-freeze.txt",
+    "latest_at_check": true,
+    "dependency_freeze_sha256": "cecadd9c4303838beefe1ae3c6307569cfc2d7a6c81163aee3dc566fc05416e8",
+    "dependencies": {
+      "numpy": "2.0.2",
+      "sherpa-onnx-core": "1.13.8",
+      "sherpa-onnx": "1.13.8"
+    },
+    "macos_version": "14.7.6",
+    "cached_wheels": [
+      {
+        "path": "work/streaming-asr/wheels/numpy-2.0.2-cp39-cp39-macosx_14_0_arm64.whl",
+        "bytes": 5306976,
+        "sha256": "2b2955fa6f11907cf7a70dab0d0755159bca87755e831e47932367fc8f2f2d0b"
+      },
+      {
+        "path": "work/streaming-asr/wheels/sherpa_onnx-1.13.8-cp39-cp39-macosx_11_0_arm64.whl",
+        "bytes": 2140519,
+        "sha256": "da288a084ffccea9468c4ba916ed367ebdf7e28e7a4f3c59b684e37fc429e466"
+      },
+      {
+        "path": "work/streaming-asr/wheels/sherpa_onnx_core-1.13.8-py3-none-macosx_11_0_arm64.whl",
+        "bytes": 9552498,
+        "sha256": "9312bbd46c93e31cecd3abda9cc8e71881d86cc3da3c35c7445ab04025b9fc3e"
+      }
+    ]
+  },
+  "recognizer": {
+    "provider": "cpu",
+    "num_threads": 2,
+    "decoding_method": "greedy_search",
+    "sample_rate": 16000,
+    "feature_dim": 80,
+    "model_type": "zipformer2",
+    "enable_endpoint": true,
+    "rule1_min_trailing_silence": 2.4,
+    "rule2_min_trailing_silence": 1.2,
+    "rule3_min_utterance_length": 20.0,
+    "endpoint_note": "Keep official endpoint defaults 2.4/1.2/20.0 seconds; wrapper separately resets stream at existing 12-second hard limit. Acoustic endpoint is not bilingual Final.",
+    "encoder_chunk_size": 16,
+    "left_context": 128,
+    "quantization": false,
+    "wrapper_hard_limit_seconds": 12,
+    "model_metadata": {
+      "model_type": "zipformer2",
+      "version": "1",
+      "model_author": "k2-fsa",
+      "comment": "streaming zipformer2",
+      "decode_chunk_len": 32,
+      "T": 45,
+      "left_context_len": "128,64,32,16,32,64"
+    },
+    "encoder_chunk_note": "Artifact filename chunk-16 refers to exported model setting. Embedded ONNX metadata decode_chunk_len=32, T=45 feature frames. Preserve state and let is_ready govern decoding; do not override these internals."
+  },
+  "license": {
+    "runtime": "Apache-2.0",
+    "weights": "Apache-2.0",
+    "weights_evidence_url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/blob/672fbf1b30579d6585301139bb363f42a0ad4a24/README.md",
+    "weights_evidence_path": "work/streaming-asr/evidence/export-README.md",
+    "weights_evidence_sha256": "c914dd28e23310a6dd345ea10495003d3e4820d2ed987181e4c2d67e501b6b76",
+    "weights_evidence": "Pinned exported-weight model card explicitly declares license: apache-2.0. This is independent of runtime license.",
+    "source_weights_license": "not declared in pinned source model card or API metadata",
+    "boundary": "Export maintainer declares the exported artifact Apache-2.0; original checkpoint repository only links training code and has no separate license declaration. This is not an independent upstream relicensing audit; redistribution remains unreviewed.",
+    "experiment_eligible": true,
+    "redistribution_reviewed": false,
+    "license_text_path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/LICENSE.Apache-2.0.txt",
+    "artifacts": [
+      {
+        "name": "README.md",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/README.md",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26/raw/672fbf1b30579d6585301139bb363f42a0ad4a24/README.md",
+        "bytes": 216,
+        "sha256": "c914dd28e23310a6dd345ea10495003d3e4820d2ed987181e4c2d67e501b6b76"
+      },
+      {
+        "name": "LICENSE.Apache-2.0.txt",
+        "path": "models/sherpa-onnx-streaming-zipformer-en-2023-06-26/LICENSE.Apache-2.0.txt",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  "validation": {
+    "file_hashes": "passed",
+    "offline_model_load": "passed",
+    "audio_quality": "not executed",
+    "long_running": "not executed",
+    "production_default_changed": false,
+    "offline_model_load_evidence": "work/streaming-asr/evidence/offline-load-smoke.json",
+    "offline_model_load_network_policy": "(version 1)(allow default)(deny network*)",
+    "audio_samples_submitted": 0,
+    "recognizer_model_type_failed_attempt": {
+      "value": "zipformer",
+      "reason": "attention_dims does not exist in metadata",
+      "evidence": "work/streaming-asr/evidence/failed-explicit-zipformer-model-type.stderr.log"
+    },
+    "recognizer_model_type_passed": "zipformer2"
+  },
+  "evidence": [
+    {
+      "path": "work/streaming-asr/evidence/Apache-2.0.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "work/streaming-asr/evidence/export-README.md",
+      "bytes": 216,
+      "sha256": "c914dd28e23310a6dd345ea10495003d3e4820d2ed987181e4c2d67e501b6b76"
+    },
+    {
+      "path": "work/streaming-asr/evidence/export-files.json",
+      "bytes": 4523,
+      "sha256": "2b9a3596dcbbeafc65204f94dfad0676d719cfb65faec96138813fb1e06853c4"
+    },
+    {
+      "path": "work/streaming-asr/evidence/export.json",
+      "bytes": 2096,
+      "sha256": "d6e93c7caa00178a62be250155b48863fb15b1c40c9f32becc6f57e6ae110338"
+    },
+    {
+      "path": "work/streaming-asr/evidence/failed-explicit-zipformer-model-type.stderr.log",
+      "bytes": 161,
+      "sha256": "a1d6425c0a415ae2dcf5f53b20ce44144151d4c62dc8cfd5eb57a777a350397f"
+    },
+    {
+      "path": "work/streaming-asr/evidence/official-model-doc.html",
+      "bytes": 479982,
+      "sha256": "b8001fcddeeebaa2d6b3defce74e2766f15ecde366baeedcd19c949a3d8279bb"
+    },
+    {
+      "path": "work/streaming-asr/evidence/offline-load-smoke.json",
+      "bytes": 480,
+      "sha256": "1646f26cac292b16a8b882cb748a34354a3fc7594ddec9452880e98f1625fcf1"
+    },
+    {
+      "path": "work/streaming-asr/evidence/offline-load-smoke.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "work/streaming-asr/evidence/online-recognizer.py",
+      "bytes": 43953,
+      "sha256": "a80620a5eb35e06a190584c2c643e5210bff672410283e5a8f106655c1519c9e"
+    },
+    {
+      "path": "work/streaming-asr/evidence/pip-download.log",
+      "bytes": 624,
+      "sha256": "7ba411abac7979d3c57212e20f3728b3bea7e36a1ebf5e0b0526fb9bf9064308"
+    },
+    {
+      "path": "work/streaming-asr/evidence/pypi.json",
+      "bytes": 1878959,
+      "sha256": "f99b50d36d577dcaf5da6683ec2a878b16e1cd64d3c064ade8b57df60562d8e2"
+    },
+    {
+      "path": "work/streaming-asr/evidence/source-README.md",
+      "bytes": 48,
+      "sha256": "a4b186b5edb0d637f9e57b7a6d223609874d41f06f2f9d3cf8888454289b2e70"
+    },
+    {
+      "path": "work/streaming-asr/evidence/source.json",
+      "bytes": 19047,
+      "sha256": "16554689b449cda2714eb4cb4b47c5fbf29d870d3793400f88819c8a04efaabd"
+    },
+    {
+      "path": "work/streaming-asr/evidence/tokens.txt",
+      "bytes": 5048,
+      "sha256": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb"
+    }
+  ]
+}

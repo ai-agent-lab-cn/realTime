@@ -5,9 +5,31 @@ import { mkdir } from 'node:fs/promises'
 import { saveHistory } from './history.js'
 import { NativeModels } from './local-models.js'
 import { LocalRuntime } from './local-runtime.js'
+import { LocalDiagnostics, saveDiagnostics } from './local-diagnostics.js'
+import { validateToken } from './local-processing.js'
+import type { LocalAudioRequest, LocalTranscript } from './local-types.js'
 import { allowAudioPermission, allowResource } from './local-permissions.js'
 const here = dirname(fileURLToPath(import.meta.url))
-const runtime = new LocalRuntime(new NativeModels(join(here, '..')))
+const diagnostics = new LocalDiagnostics()
+let diagnosticToken: string | null = null
+let diagnosticSaved: { runId: string; path?: string; error?: string } | undefined
+let preparationGeneration = 0
+let preparingToken: string | null = null
+const runtime = new LocalRuntime(new NativeModels(join(here, '..')), (key, stage) =>
+  diagnostics.mark(key, stage),
+)
+async function persistDiagnostics(token: string) {
+  const report = diagnostics.finish(token)
+  if (!report || !report.requests.length) return
+  try {
+    const path = await saveDiagnostics(report, join(app.getPath('userData'), 'diagnostics'))
+    if (diagnostics.report()?.runId === report.runId)
+      diagnosticSaved = { runId: report.runId, path }
+  } catch {
+    if (diagnostics.report()?.runId === report.runId)
+      diagnosticSaved = { runId: report.runId, error: '本地延迟记录保存失败' }
+  }
+}
 const development = process.env.VITE_DEV_SERVER_URL === 'http://127.0.0.1:5187'
 let main: BrowserWindow | null = null
 function createWindow() {
@@ -77,28 +99,90 @@ app.whenReady().then(() => {
   }
   ipcMain.handle('local:prepare', async (event, token) => {
     authorized(event)
-    await runtime.prepare(token)
+    validateToken(token)
+    const generation = ++preparationGeneration
+    preparingToken = token
+    try {
+      if (diagnosticToken) {
+        runtime.cancel(diagnosticToken)
+        await persistDiagnostics(diagnosticToken)
+      }
+      if (generation !== preparationGeneration || preparingToken !== token)
+        throw new Error('准备已取消')
+      diagnostics.prepare(
+        token,
+        process.env.SHIYI_DIAGNOSTIC_SOURCE === 'fixture' ? 'fixture' : 'microphone',
+      )
+      diagnosticToken = token
+      diagnosticSaved = undefined
+      try {
+        await runtime.prepare(token)
+      } catch (error) {
+        await persistDiagnostics(token)
+        throw error
+      }
+    } finally {
+      if (generation === preparationGeneration) preparingToken = null
+    }
   })
+  ipcMain.handle('local:record-timing', (event, value) => {
+    authorized(event)
+    diagnostics.metric(value)
+  })
+  ipcMain.handle('local:diagnostics', (event) => {
+    authorized(event)
+    return {
+      report: diagnostics.report(),
+      savedPath: diagnosticSaved?.path,
+      saveError: diagnosticSaved?.error,
+    }
+  })
+  function callbacks(event: Electron.IpcMainInvokeEvent, request: LocalAudioRequest) {
+    const key = {
+      token: request.token,
+      id: request.id,
+      revision: request.revision,
+      time: request.time,
+    }
+    const recognized = (en: string, caption?: LocalTranscript['caption']) => {
+      if (!event.sender.isDestroyed())
+        event.sender.send('local:recognized', { ...key, en, ...(caption ? { caption } : {}) })
+    }
+    const translated = (phase: 'progress' | 'complete') => (result: LocalTranscript) => {
+      if (!event.sender.isDestroyed())
+        event.sender.send('local:translated', {
+          ...key,
+          ...result,
+          phase,
+          audioFinal: request.final,
+        })
+    }
+    return { recognized, progress: translated('progress'), complete: translated('complete') }
+  }
   ipcMain.handle('local:transcribe', async (event, request) => {
     authorized(event)
-    return runtime.transcribe(request, (en) => {
-      if (!event.sender.isDestroyed())
-        event.sender.send('local:recognized', {
-          token: request.token,
-          id: request.id,
-          revision: request.revision,
-          time: request.time,
-          en,
-        })
-    })
+    diagnostics.mark(request, 'received')
+    const notify = callbacks(event, request)
+    return runtime.transcribe(request, notify.recognized, notify.progress)
+  })
+  ipcMain.handle('local:recognize', async (event, request) => {
+    authorized(event)
+    diagnostics.mark(request, 'received')
+    const notify = callbacks(event, request)
+    return runtime.recognize(request, notify.recognized, notify.progress, notify.complete)
   })
   ipcMain.handle('local:cancel-request', (event, request) => {
     authorized(event)
     runtime.cancelRequest(request)
   })
-  ipcMain.handle('local:cancel', (event, token) => {
+  ipcMain.handle('local:cancel', async (event, token) => {
     authorized(event)
+    if (preparingToken === token) {
+      preparationGeneration++
+      preparingToken = null
+    }
     runtime.cancel(token)
+    await persistDiagnostics(token)
   })
   ipcMain.handle('clipboard:write', (event, text: unknown) => {
     if (event.sender !== main?.webContents || event.senderFrame !== main?.webContents.mainFrame)

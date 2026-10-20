@@ -27,7 +27,7 @@ async function bottom() {
   }
 }
 watch(
-  () => store.session.captions.map((c) => `${c.id}:${c.revision}`).join(','),
+  () => store.session.captions.map((c) => `${c.id}:${c.revision}:${c.zh.length}`).join(','),
   () => {
     if (store.settings.autoScroll && !away.value) void bottom()
   },

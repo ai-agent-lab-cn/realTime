@@ -1,3 +1,5 @@
+import { sentenceUnits } from './sentence-boundaries.js'
+
 // Conservative text boundaries, not a semantic sentence parser.
 export function questionPunctuation(text: string): string {
   return text.replace(/[^!?]+?(?:\.(?![.\d])|[!?])/g, (whole) => {
@@ -22,12 +24,10 @@ export function hasOpenTail(text: string): boolean {
   return /\b(?:of|to|and|or|the|a|an|in|on|for|with|at|by|because|although|if)\s*$/i.test(text)
 }
 export function completePrefix(text: string): string {
-  if (/[.!?]$/.test(text.trim()) && !/\b(?:mr|mrs|ms|dr|prof|e\.g|i\.e)\.$/i.test(text.trim()))
-    return text.trim()
   let end = 0
-  for (const match of text.matchAll(/[.!?]\s+/g)) {
-    const prefix = text.slice(0, match.index! + 1)
-    if (!/\b(?:mr|mrs|ms|dr|prof|e\.g|i\.e)\.$/i.test(prefix)) end = match.index! + 1
+  for (const unit of sentenceUnits(text)) {
+    if (!unit.closed) break
+    end = unit.end
   }
   return text.slice(0, end).trim()
 }
@@ -36,4 +36,16 @@ export function joinContinuation(left: string, right: string): string {
   const last = left.match(/\b(of|to|and|the|a|an|in|on|for|with|at|by)\s*$/i)?.[1]
   const rest = last ? right.replace(new RegExp(`^${last}\\b\\s*`, 'i'), '') : right
   return `${left.trim()} ${rest.trim()}`.trim()
+}
+
+// Missing terminal punctuation on a substantial clause is provisional, not proof
+// of semantic completeness. Short standalone utterances still finish normally.
+export function needsContinuation(text: string): boolean {
+  const value = text.trim()
+  if (/(?:\.{2,}|…)\s*$/.test(value)) return true
+  if (hasOpenTail(value)) return true
+  return (
+    !/[.!?。！？]["'”’)]*$/.test(value) &&
+    (value.match(/\b[a-z]+(?:'[a-z]+)?\b/gi)?.length ?? 0) >= 6
+  )
 }

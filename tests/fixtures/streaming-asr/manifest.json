@@ -1,0 +1,466 @@
+{
+  "version": "streaming-asr-fixed-v1",
+  "method": {
+    "selection": "26 fixed cases: all 9 original local fixtures, all 16 existing course excerpts, and 1 fixed numbers light-noise variant. Failed/mixed/silence and uncertain negation are retained.",
+    "references": "Course statuses come from per-row confirmed status and reviewedAt in outputs/quality-baseline-reviewed-v1/正式基准-v1.json, cross-checked with 人工听校原始导出.json and 人工修订记录.json. The stale all-pending template header is not used. Existing pending or uncertain references are not promoted.",
+    "formalBaselineSha256": "0ae973085a746025487016138d0f39c016941e359e0aed1e8497c65f4099d2fa",
+    "humanEnglishCases": 16,
+    "humanEnglishDurationSeconds": 120.58,
+    "syntheticScoring": "Known TTS text is separate from human speech. negation remains unclear because the existing human review marked it uncertain; it is observed but excluded from WER. Mixed language is observed without English WER.",
+    "werNormalization": "Lowercase; Unicode punctuation/symbols become spaces; whitespace word tokens. Number words are not equated to numeric digits. This differs from the older retrospective score normalization and results must not be compared without recomputing.",
+    "repeats": "Use the same audio across both arms, three repeats. Repeats and the derived noise sample do not create additional independent human references.",
+    "semanticValidity": "Existing meaning notes are checklists, not a new human semantic judgment of outputs. firstAccepted is an ASR quality-gate measure only."
+  },
+  "cases": [
+    {
+      "id": "everyday",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/everyday.wav",
+      "durationSeconds": 3.0650625,
+      "sha256": "92024cd77b5e37fc499683c6977ef167f0d313bb1b7fe7b0da20e24be155f810",
+      "reference": "Could you please repeat the last sentence a little more slowly?",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["请求放慢速度重复上一句"]
+    },
+    {
+      "id": "technical",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/technical.wav",
+      "durationSeconds": 5.1084375,
+      "sha256": "fa34da1458bd136cd66ed657c066a2877cb629e2f5c96e3aa2dcf1b7d4aef6ab",
+      "reference": "We need to improve the RAG retrieval pipeline, not replace the entire application.",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["优化 RAG 检索流水线", "不是替换整个应用"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:48:26.112Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "numbers",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/numbers.wav",
+      "durationSeconds": 4.9226875,
+      "sha256": "52fda7b2c03e6b7943e2750b0a2a1c4008f8cab4a90c863b0e6e2694541683c2",
+      "reference": "The timeout is fifteen seconds, not fifty. Please keep three backup copies.",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["15 秒而非 50 秒", "3 份备份"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:48:35.192Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "negation",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/negation.wav",
+      "durationSeconds": 3.71525,
+      "sha256": "615cb80281109e58856c828a8fe8fa687ea446b5a6107e2d513e6517de361e84",
+      "reference": "Do not delete the original files until the backup has been verified.",
+      "referenceStatus": "unclear",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["验证备份前不要删除原文件"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:48:49.709Z",
+        "originalStatus": "uncertain",
+        "notes": "整句语速较快"
+      }
+    },
+    {
+      "id": "long",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/long.wav",
+      "durationSeconds": 6.432,
+      "sha256": "cba2991ea44bd07c25d27dfbba66d354cb361eb492c75b482383d3e1ffda5df4",
+      "reference": "When the connection is interrupted, keep the current subtitles on screen and let the user retry without losing the text that has already been confirmed.",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["中断时保留字幕", "重试不能丢失已确认内容"]
+    },
+    {
+      "id": "acronyms",
+      "group": "synthetic",
+      "language": "en",
+      "file": "tests/fixtures/local/acronyms.wav",
+      "durationSeconds": 4.597625,
+      "sha256": "6aadfcb9df7e329d02e3fabc8ffde4840be4cffbc5423ee32fec3cbff1932472",
+      "reference": "The agent uses embeddings to search the repository before opening a pull request.",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["智能体使用嵌入检索仓库", "随后提出 PR"]
+    },
+    {
+      "id": "mixed",
+      "group": "synthetic",
+      "language": "mixed",
+      "file": "tests/fixtures/local/mixed.wav",
+      "durationSeconds": 5.735375,
+      "sha256": "95e59d38e565e5d7768c80dabbeb9ea3a3e2bcfc16c2ac4801e3525e31a979c7",
+      "reference": "我们需要优化 RAG pipeline，但是不要修改已经确认的字幕。",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["优化 RAG pipeline", "不修改确认字幕"]
+    },
+    {
+      "id": "mixed_numbers",
+      "group": "synthetic",
+      "language": "mixed",
+      "file": "tests/fixtures/local/mixed_numbers.wav",
+      "durationSeconds": 5.5264375,
+      "sha256": "b12879c4bd19226dba5b381bfcb35cbdf037e6dcf33f92426b8ed3e2abe2f8a4",
+      "reference": "这个 API 的 timeout 是十五秒，不是五十秒。",
+      "referenceStatus": "synthetic_known_text",
+      "source": "macOS local TTS, synthetic",
+      "semantic_checks": ["API 超时 15 秒而非 50 秒"]
+    },
+    {
+      "id": "silence",
+      "group": "silence",
+      "language": "none",
+      "file": "tests/fixtures/local/silence.wav",
+      "durationSeconds": 4.0,
+      "sha256": "f751fd7094be088dc785125e4a1a0222a17c2bd20469aa31728ca5e515ed5809",
+      "reference": "",
+      "referenceStatus": "synthetic_known_text",
+      "source": "generated zero PCM",
+      "semantic_checks": ["不应出现语音内容"]
+    },
+    {
+      "id": "course_01",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_01.wav",
+      "durationSeconds": 3.9,
+      "sha256": "fb3eae11affb2f5ba32e0855a8f7e0219dbb853808b644ff9530090f803f29d0",
+      "reference": "Welcome to English for Science and Technology.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 0.04s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["欢迎进入科技英语课程。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:43:20.686Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_02",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_02.wav",
+      "durationSeconds": 5.64,
+      "sha256": "4c98c0e23e87220444902ab1e2280053bd4bdc2671b2ce6047637c3257ffb332",
+      "reference": "In this section, we talk about research and development activities.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 3.78s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["本节讨论研发活动。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:43:39.058Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_03",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_03.wav",
+      "durationSeconds": 6.54,
+      "sha256": "94a900cc534fb58ceb555a2ceda8763e947689f952bfa22201b769f1d4c9f7fc",
+      "reference": "We are to look at the following research and development related questions.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 9.2s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["将讨论以下与研发相关的问题。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:43:48.909Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_04",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_04.wav",
+      "durationSeconds": 6.44,
+      "sha256": "78aa4b06f6d9ffe9558a3e025dd1b7943b5a1f19d9b8a03544381ef60dc51d32",
+      "reference": "First, how to measure the level of research and development activities?",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 15.64s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["第一个问题：如何衡量研发活动水平？"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:43:54.209Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_05",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_05.wav",
+      "durationSeconds": 6.66,
+      "sha256": "5d23437c4af33c269ab393ae89a068462f7bf640923ad335d289e4856dde2f3e",
+      "reference": "This introduces the four indicators of research and development activities.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 21.98s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["介绍研发活动的四个指标。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:05.716Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_06",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_06.wav",
+      "durationSeconds": 6.7,
+      "sha256": "88728c0d218c36650a6b55865a273651b8f2041dda5b658351dd535705406596",
+      "reference": "Second, which is the best indicator of research and development activity?",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 28.74s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["第二个问题：哪个是衡量研发活动的最佳指标？保留疑问含义。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:14.532Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_07",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_07.wav",
+      "durationSeconds": 4.6,
+      "sha256": "f6ecd19a894858d8497c0a20947b7a855ae0b255136f6406ad87e35fbb27be73",
+      "reference": "This is about the research and development intensity.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 35.16s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["讨论研发强度。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:21.006Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_08",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_08.wav",
+      "durationSeconds": 9.36,
+      "sha256": "aaa6b7fe39eae5174fa0e27652d60b8a443df6d127f1ac9b8b2876de460fe677",
+      "reference": "And third, what industries do the private sector finance? This is about research and development intensive industries.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 39.6s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": [
+        "第三个问题涉及私营部门资助哪些行业；接着引出研发密集型行业。问句确切用词待听校。"
+      ],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:32.594Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_09",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_09.wav",
+      "durationSeconds": 6.8,
+      "sha256": "24711ad7c723bb0a94c67a8af37cf1fdb98d0478bab8e8586d4b81dca0d8d434",
+      "reference": "And fourth, why are some products sold at a price much higher than the cost?",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 48.78s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["第四个问题：为什么某些产品售价远高于成本？"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:41.145Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_10",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_10.wav",
+      "durationSeconds": 4.78,
+      "sha256": "49b41a09b9800be1ad9c25579f03032f183aa5f0c075eea30cc3b53a5ec81414",
+      "reference": "This is about R&D risks and returns.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_00m00s-01m00s.wav at 55.4s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["研发风险与回报。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:44:49.094Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_11",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_11.wav",
+      "durationSeconds": 10.48,
+      "sha256": "67cf976a064ceb5114173924768d701ec07b38490d3bc13bf1e26fc89cc72945",
+      "reference": "is the R&D intensity. That is, the percentage of revenues that a company spends on research and development each year.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 240s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["片段从上文中间开始；研发强度是每年研发支出占公司收入的比例。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:45:03.283Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_12",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_12.wav",
+      "durationSeconds": 6.56,
+      "sha256": "ba4877f32c9a1afb39c4773bbff532cf12fd550c109ecceac0c9a0027b93ae9a",
+      "reference": "Then why is R&D intensity a good indicator of R&D activities?",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 250.2s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["为什么研发强度是研发活动的良好指标？"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:45:27.957Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_13",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_13.wav",
+      "durationSeconds": 10.0,
+      "sha256": "5aab7e3749de01ababddd8cb329a6e7adf27d899536140824706d70b49041302",
+      "reference": "Because firstly, the information of the percentage of revenue that is spent on R&D is regularly updated.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 256.98s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["第一，研发支出占收入比例的信息定期更新；spent，不是 spammed。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:46:55.842Z",
+        "originalStatus": "confirmed",
+        "notes": "“spent，不是 spammed。”"
+      }
+    },
+    {
+      "id": "course_14",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_14.wav",
+      "durationSeconds": 8.28,
+      "sha256": "9f516540242335d12fbe21bf4832f224f6032de29d0a581fd694a31d5b75d6e4",
+      "reference": "Secondly, this information is available to the public, and thirdly, it reflects business risk.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 267.96000000000004s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["第二，信息公开；第三，反映商业风险。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:47:28.007Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "course_15",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_15.wav",
+      "durationSeconds": 12.0,
+      "sha256": "76b3fe8642e0523920a64e2b422ebe89fe83b64c01a58b1f8a2735cea1c806fb",
+      "reference": "Research and development is very expensive, time-consuming and risky. The companies that spend a lot on R&D activities in pursuit of",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 276.44s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": ["研发昂贵、耗时且有风险；下句尚未结束，不能独立译成完整陈述。"],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:47:53.427Z",
+        "originalStatus": "confirmed",
+        "notes": "下句尚未结束，不能独立译成完整陈述"
+      }
+    },
+    {
+      "id": "course_16",
+      "group": "course",
+      "language": "en",
+      "file": "outputs/quality-baseline/audio/course_16.wav",
+      "durationSeconds": 11.84,
+      "sha256": "363ab532fd0988011805b942c49b510f34e344ac74604884b3dfb2394956a623",
+      "reference": "high benefits are called R&D intensive companies. For certain sectors, R&D is the primary driver of new product creation.",
+      "referenceStatus": "human_confirmed",
+      "source": "Existing course excerpt sd_02m00s-03m00s.wav at 288.44s; user human-reviewed on 2026-10-12; draft originally model-assisted, not blind independent annotation.",
+      "semantic_checks": [
+        "承接上句：追求高收益的高研发投入企业称为研发密集型企业；某些行业由研发驱动新产品创造。"
+      ],
+      "referenceEvidence": {
+        "file": "outputs/quality-baseline-reviewed-v1/正式基准-v1.json",
+        "reviewer": "张荣",
+        "reviewedAt": "2026-10-12T03:48:16.979Z",
+        "originalStatus": "confirmed",
+        "notes": ""
+      }
+    },
+    {
+      "id": "numbers_noise",
+      "group": "noise",
+      "language": "en",
+      "file": "work/streaming-asr/numbers_noise.wav",
+      "durationSeconds": 4.9226875,
+      "sha256": "b2650bd91dcffa1d39ca62a27dd78dc7b81620a505edd2e48eb87dd8b187fd47",
+      "reference": "The timeout is fifteen seconds, not fifty. Please keep three backup copies.",
+      "referenceStatus": "synthetic_known_text",
+      "source": "Deterministic light-noise derivative of tests/fixtures/local/numbers.wav; seed=20261019, Gaussian noise at 20 dB SNR. Same known synthetic text; not independent human speech.",
+      "semantic_checks": ["15 秒而非 50 秒", "3 份备份"],
+      "derivedFrom": "numbers"
+    }
+  ]
+}

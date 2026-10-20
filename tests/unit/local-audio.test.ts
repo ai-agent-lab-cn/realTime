@@ -211,3 +211,15 @@ it('preempts an active Partial when its Final arrives without failing the sessio
   expect(received).toEqual([2])
   expect(failures).toEqual([])
 })
+
+it('reports sample-based voice start/end separately from preroll and trailing silence', () => {
+  const segmenter = new SpeechSegmenter()
+  segmenter.push(new Float32Array(4800))
+  const events = segmenter.push(new Float32Array(32000).fill(0.1))
+  events.push(...segmenter.push(new Float32Array(16000)))
+  const final = events.find((e) => e.final)!
+  expect(final.speechStart).toBeCloseTo(0.3)
+  expect(final.speechEnd).toBeCloseTo(2.3)
+  expect(final.end).toBeCloseTo(2.9)
+  expect(final.time).toBe(0)
+})

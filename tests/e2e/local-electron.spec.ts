@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 test('本地麦克风回放经过真实模型，暂停冻结，结束保存真实记录', async () => {
@@ -7,10 +7,10 @@ test('本地麦克风回放经过真实模型，暂停冻结，结束保存真�
   const desktop = await mkdtemp(join(tmpdir(), 'shiyi-local-desktop-'))
   const app = await electron.launch({
     args: ['.', '--use-fake-device-for-media-stream'],
-    env: { ...process.env, VITE_DEV_SERVER_URL: '' },
+    env: { ...process.env, VITE_DEV_SERVER_URL: '', SHIYI_DIAGNOSTIC_SOURCE: 'fixture' },
   })
   try {
-    await app.evaluate(({ app }, path) => app.setPath('desktop', path), desktop)
+    await app.evaluate(({ app }, path) => { app.setPath('desktop', path); app.setPath('userData', path) }, desktop)
     const page = await app.firstWindow()
     // Chromium's sandbox cannot read --use-file-for-fake-audio-capture on this Mac.
     // Keep the sandbox and permission path; inject a fixed in-memory MediaStream instead.
@@ -42,9 +42,12 @@ test('本地麦克风回放经过真实模型，暂停冻结，结束保存真�
     }, fixture)
     await page.reload()
     await page.evaluate(() => {
-      const timings = { original: 0, translated: 0 }
+      const timings = { original: 0, translated: 0, final: 0, streamed: [] as number[] }
+      ;(window as any).desktop.local.onTranslated(() => timings.streamed.push(performance.now()))
       ;(window as any).__captionTimings = timings
       const observer = new MutationObserver(() => {
+        if (!timings.final && document.querySelector('.caption.final'))
+          timings.final = performance.now()
         if (!timings.original && document.querySelector('.caption .english')?.textContent?.trim())
           timings.original = performance.now()
         if (!timings.translated && document.querySelector('.caption .chinese')?.textContent?.trim())
@@ -62,13 +65,24 @@ test('本地麦克风回放经过真实模型，暂停冻结，结束保存真�
     const timings = await page.evaluate(() => (window as any).__captionTimings)
     expect(timings.original).toBeGreaterThan(0)
     expect(timings.translated).toBeGreaterThan(timings.original)
+    expect(timings.streamed.length).toBeGreaterThan(1)
+    expect(timings.translated).toBeLessThan(timings.final)
+    await writeFile('work/local-electron-timings.json', JSON.stringify(timings, null, 2))
     const first = await page.locator('.caption.final').first().innerText()
     expect(first).toContain('15')
     expect(first).toContain('50')
+    await expect.poll(() => page.evaluate(async () => (await window.desktop!.local!.diagnostics!()).report?.summary.speechEndToFinalMs?.n ?? 0)).toBeGreaterThan(0)
     await page.getByRole('button', { name: '暂停', exact: true }).click()
     const frozen = await page.locator('.feed').innerText()
     await page.waitForTimeout(2500)
     expect(await page.locator('.feed').innerText()).toBe(frozen)
+    await expect.poll(() => page.evaluate(async () => (await window.desktop!.local!.diagnostics!()).savedPath ?? '')).not.toBe('')
+    const diagnostic = await page.evaluate(async () => window.desktop!.local!.diagnostics!())
+    await (await import('node:fs/promises')).mkdir('outputs/unit-timings', { recursive: true })
+    await writeFile('outputs/unit-timings/native-diagnostics.json', await readFile(diagnostic.savedPath!, 'utf8'))
+    expect(diagnostic.report?.source).toBe('fixture')
+    expect(diagnostic.report?.summary.speechToEnglishMs?.n).toBeGreaterThan(0)
+    expect(diagnostic.report?.summary.speechToChineseMs?.n).toBeGreaterThan(0)
     await page.getByRole('button', { name: '继续翻译', exact: true }).click()
     await expect(page.locator('.status-pill')).toContainText('Listening', { timeout: 10000 })
     await page.getByRole('button', { name: '结束', exact: true }).click()
@@ -79,7 +93,7 @@ test('本地麦克风回放经过真实模型，暂停冻结，结束保存真�
     expect(text).not.toContain('模拟数据')
     expect(text).toContain('15')
     expect(errors).toEqual([])
-    await page.screenshot({ path: 'outputs/local-runtime-evaluation/desktop-local.png' })
+    await page.screenshot({ path: 'work/screenshots/local-streaming.png' })
   } finally {
     await app.close()
     await rm(desktop, { recursive: true, force: true })
